@@ -45,7 +45,8 @@ export default function CatHunt3D() {
   const [timeLeft, setTimeLeft] = useState(LEVELS[0].timeLimit);
   const [found, setFound] = useState(0);
   const [hint, setHint] = useState('Busca a los michi perdidos...');
-  const [toast, setToast] = useState('');
+  const [rescueToast, setRescueToast] = useState('');
+  const rescueToastTimeoutRef = useRef(null);
   const [paused, setPaused] = useState(false);
   const [lastFoundProfiles, setLastFoundProfiles] = useState([]);
   const [settings, setSettings] = useState(() => safeRead('settings', { look: 'media', quality: 'normal' }));
@@ -65,8 +66,15 @@ export default function CatHunt3D() {
   const unlockAchievement = (id, title) => { if (!achievements.includes(id)) { setAchievements((a) => [...a, id]); setAchievementToast(`🏆 Logro desbloqueado: ${title}`); } };
   useEffect(() => { if (!achievementToast) return; const t = setTimeout(() => setAchievementToast(''), 2200); return () => clearTimeout(t); }, [achievementToast]);
 
-  const stopGame = useCallback(() => { if (timerRef.current) clearInterval(timerRef.current); const g = gameRef.current; if (!g) return; g.running = false; if (g.rafId) cancelAnimationFrame(g.rafId); window.removeEventListener('resize', g.onResize); window.removeEventListener('keydown', g.onKeyDown); window.removeEventListener('keyup', g.onKeyUp); window.removeEventListener('mousemove', g.onMouseMove); window.removeEventListener('click', g.onClick); window.removeEventListener('pointerlockchange', g.onPointerLockChange); g.scene.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) Array.isArray(o.material) ? o.material.forEach((m) => m.dispose()) : o.material.dispose(); }); g.renderer.dispose(); g.renderer.domElement?.remove(); gameRef.current = null; }, []);
-  useEffect(() => () => stopGame(), [stopGame]);
+  const showRescueToast = (message) => {
+    if (rescueToastTimeoutRef.current) clearTimeout(rescueToastTimeoutRef.current);
+    setRescueToast(message);
+    rescueToastTimeoutRef.current = setTimeout(() => setRescueToast(''), 1400);
+  };
+
+
+  const stopGame = useCallback(() => { if (timerRef.current) clearInterval(timerRef.current); timerRef.current = null; if (document.pointerLockElement) document.exitPointerLock?.(); const g = gameRef.current; if (!g) { if (mountRef.current) mountRef.current.innerHTML=''; return; } g.running = false; if (g.rafId) cancelAnimationFrame(g.rafId); window.removeEventListener('resize', g.onResize); window.removeEventListener('keydown', g.onKeyDown); window.removeEventListener('keyup', g.onKeyUp); window.removeEventListener('mousemove', g.onMouseMove); window.removeEventListener('click', g.onClick); window.removeEventListener('pointerlockchange', g.onPointerLockChange); g.scene.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) Array.isArray(o.material) ? o.material.forEach((m) => m.dispose()) : o.material.dispose(); }); g.renderer.dispose(); g.renderer.domElement?.remove(); if (mountRef.current) mountRef.current.innerHTML=''; gameRef.current = null; }, []);
+  useEffect(() => () => { if (rescueToastTimeoutRef.current) clearTimeout(rescueToastTimeoutRef.current); stopGame(); }, [stopGame]);
 
   const initAudio = useCallback(async () => { if (audioRef.current.started) return; try { await Tone.start(); audioRef.current.meow = new Tone.Synth().toDestination(); audioRef.current.success = new Tone.PolySynth(Tone.Synth).toDestination(); audioRef.current.started = true; } catch {} }, []);
 
@@ -85,16 +93,28 @@ export default function CatHunt3D() {
     const obstacles = []; const place = (m) => { scene.add(m); obstacles.push(m.position.clone()); };
     for (let i = 0; i < decorCount / 3; i += 1) { const t = new THREE.Group(); const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 1.5, 6), new THREE.MeshToonMaterial({ color: '#8d5a3b' })); trunk.position.y = .75; const top = new THREE.Mesh(new THREE.SphereGeometry(0.9, 8, 8), new THREE.MeshToonMaterial({ color: i % 2 ? '#78c67c' : '#65b06c' })); top.position.y = 1.9; t.add(trunk, top); t.position.set((Math.random() - .5) * 80, 0, (Math.random() - .5) * 80); place(t); }
     for (let i = 0; i < decorCount / 4; i += 1) { const bush = new THREE.Mesh(new THREE.SphereGeometry(0.45 + Math.random() * .3, 8, 8), new THREE.MeshToonMaterial({ color: i % 2 ? '#72c07f' : '#89d49a' })); bush.position.set((Math.random() - .5) * 84, .35, (Math.random() - .5) * 84); place(bush); }
+    for (let i = 0; i < decorCount; i += 1) { const f = new THREE.Group(); const stem = new THREE.Mesh(new THREE.CylinderGeometry(.015,.02,.2,5), new THREE.MeshToonMaterial({ color:'#72c97c' })); stem.position.y=.1; const petal = new THREE.Mesh(new THREE.SphereGeometry(.055,6,6), new THREE.MeshToonMaterial({ color: ['#ff9ec6','#ffe47d','#c8a4ff','#9edbff'][i%4] })); petal.position.y=.23; f.add(stem,petal); f.position.set((Math.random()-.5)*90,0,(Math.random()-.5)*90); scene.add(f); }
+    for (let i = 0; i < decorCount / 5; i += 1) { const m = new THREE.Group(); const stem = new THREE.Mesh(new THREE.CylinderGeometry(.03,.04,.14,6), new THREE.MeshToonMaterial({ color:'#f4d3b5' })); stem.position.y=.07; const cap = new THREE.Mesh(new THREE.SphereGeometry(.12,8,8), new THREE.MeshToonMaterial({ color: i%2?'#ff89b2':'#b58bff' })); cap.position.y=.16; m.add(stem,cap); m.position.set((Math.random()-.5)*86,0,(Math.random()-.5)*86); scene.add(m);} 
 
     const cats = Array.from({ length: level.cats }, (_, i) => {
       const profile = MICHI_PROFILES[(idx * 2 + i) % MICHI_PROFILES.length];
       const g = new THREE.Group(); const m = new THREE.MeshToonMaterial({ color: profile.color });
-      const body = new THREE.Mesh(new THREE.CapsuleGeometry(.35, .55, 4, 8), m); body.rotation.z = Math.PI / 2;
-      const head = new THREE.Mesh(new THREE.SphereGeometry(.33, 12, 12), m); head.position.set(.45, .15, 0);
-      const eye = new THREE.Mesh(new THREE.SphereGeometry(.04, 8, 8), new THREE.MeshBasicMaterial({ color: '#222' })); eye.position.set(.63, .19, .11); const eye2 = eye.clone(); eye2.position.z = -.11;
-      const shine = new THREE.Mesh(new THREE.SphereGeometry(.014, 6, 6), new THREE.MeshBasicMaterial({ color: '#fff' })); shine.position.set(.645, .205, .12); const shine2 = shine.clone(); shine2.position.z = -.12;
-      const nose = new THREE.Mesh(new THREE.SphereGeometry(.03, 6, 6), new THREE.MeshBasicMaterial({ color: '#ff6b9d' })); nose.position.set(.71, .1, 0);
-      g.add(body, head, eye, eye2, shine, shine2, nose); g.userData = { ...g.userData, profile, found: false, float: Math.random() * 10 };
+      const body = new THREE.Mesh(new THREE.CapsuleGeometry(.36, .48, 4, 8), m); body.rotation.z = Math.PI / 2;
+      const head = new THREE.Mesh(new THREE.SphereGeometry(.4, 14, 14), m); head.position.set(.5, .2, 0);
+      const earOuter1 = new THREE.Mesh(new THREE.ConeGeometry(.11,.2,8), m); earOuter1.position.set(.43,.57,.17);
+      const earOuter2 = earOuter1.clone(); earOuter2.position.z = -.17;
+      const earInnerMat = new THREE.MeshLambertMaterial({ color: '#ffb8d7' });
+      const earInner1 = new THREE.Mesh(new THREE.ConeGeometry(.06,.12,8), earInnerMat); earInner1.position.copy(earOuter1.position).add(new THREE.Vector3(0,.02,0));
+      const earInner2 = earInner1.clone(); earInner2.position.z = -.17;
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(.053, 10, 10), new THREE.MeshBasicMaterial({ color: '#1d1d2f' })); eye.position.set(.71,.22,.13); const eye2 = eye.clone(); eye2.position.z = -.13;
+      const shine = new THREE.Mesh(new THREE.SphereGeometry(.018, 6, 6), new THREE.MeshBasicMaterial({ color: '#fff' })); shine.position.set(.73,.245,.14); const shine2 = shine.clone(); shine2.position.z = -.14;
+      const nose = new THREE.Mesh(new THREE.SphereGeometry(.032, 8, 8), new THREE.MeshBasicMaterial({ color: '#ff89b2' })); nose.position.set(.79,.12,0);
+      const mouth = new THREE.Mesh(new THREE.TorusGeometry(.035,.008,6,12,Math.PI), new THREE.MeshBasicMaterial({ color:'#8a4d64' })); mouth.rotation.set(Math.PI,Math.PI/2,0); mouth.position.set(.8,.08,0);
+      const blushMat = new THREE.MeshBasicMaterial({ color:'#ffb4cf' }); const blush1 = new THREE.Mesh(new THREE.SphereGeometry(.045,7,7), blushMat); blush1.position.set(.73,.1,.23); const blush2 = blush1.clone(); blush2.position.z=-.23;
+      const whiskerMat = new THREE.MeshBasicMaterial({ color:'#ffffff' }); [-.03,.02,.07].forEach((wy)=>{const w1=new THREE.Mesh(new THREE.BoxGeometry(.16,.004,.004), whiskerMat); w1.position.set(.74,.1+wy,.2); const w2=w1.clone(); w2.position.z=-.2; g.add(w1,w2);});
+      const tail = new THREE.Mesh(new THREE.CylinderGeometry(.05,.07,.5,8), m); tail.position.set(-.47,.22,0); tail.rotation.z=.95;
+      g.add(body, head, earOuter1, earOuter2, earInner1, earInner2, eye, eye2, shine, shine2, nose, mouth, blush1, blush2, tail); if ((i + idx) % 3 === 0) { const bow = new THREE.Mesh(new THREE.SphereGeometry(.06,8,8), new THREE.MeshBasicMaterial({ color:'#ff65ae' })); bow.position.set(.58,.44,.18); g.add(bow); }
+      g.userData = { ...g.userData, profile, found: false, float: Math.random() * 10 };
       let x=0,z=0; for(let t=0;t<30;t+=1){x=(Math.random()-.5)*70;z=(Math.random()-.5)*70; if(obstacles.every((o)=>Math.hypot(o.x-x,o.z-z)>2.2)) break;} g.position.set(x,.4,z); scene.add(g); return g;
     });
 
@@ -104,7 +124,7 @@ export default function CatHunt3D() {
       let best=null, bestDist=Infinity; cats.forEach((c)=>{ if(c.userData.found) return; const d=camera.position.distanceTo(c.position); if(d<bestDist){bestDist=d; best=c;}});
       if (best && bestDist < CATCH_DISTANCE) {
         best.userData.found = true; const p = best.userData.profile; setRescuedMichis((r) => (r.includes(p.id) ? r : [...r, p.id])); setLastFoundProfiles((lf) => [...lf, p]);
-        setToast(`¡Rescataste a ${p.name}! · ${p.personality} 🌸`); setFound((f) => f + 1); setScore((s) => s + 120);
+        showRescueToast(`¡Rescataste a ${p.name}! · ${p.personality} 🌸`); setFound((f) => f + 1); setScore((s) => s + 120);
         unlockAchievement('first', 'Primer rescate'); if ((rescuedMichis.length + 1) >= 5) unlockAchievement('five', 'Amiga de los michis');
         const ring = new THREE.Mesh(new THREE.TorusGeometry(.35,.03,8,24), new THREE.MeshBasicMaterial({ color:'#ff6b9d', transparent:true, opacity:.9 })); ring.position.copy(best.position); ring.rotation.x=Math.PI/2; scene.add(ring); best.userData.ring=ring; best.userData.ringBorn=performance.now();
         if (audioRef.current.success && !mute) audioRef.current.success.triggerAttackRelease(['C5', 'E5', 'G5'], '8n');
@@ -159,7 +179,7 @@ export default function CatHunt3D() {
       {isMobile && <MobileControls touchState={touchState} onCatch={() => gameRef.current?.tryCatchCat?.()} />}
       {!isMobile && <button onClick={() => gameRef.current?.tryCatchCat?.()} style={{ position: 'fixed', right: 14, bottom: 14, zIndex: 25 }}>🌈 Atrapar</button>}
       <div style={{ position: 'fixed', bottom: 16, left: 0, right: 0, textAlign: 'center', color: '#fff', fontWeight: 700, textShadow: '0 2px 6px #000' }}>{hint}</div>
-      {toast && <div style={{ position: 'fixed', top: '45%', left: '50%', transform: 'translate(-50%,-50%)', zIndex: 22, background: 'rgba(255,105,173,.9)', color: '#fff', padding: '10px 14px', borderRadius: 999 }}>{toast}</div>}
+      {rescueToast && <div style={{ position: 'fixed', top: '18%', left: '50%', transform: 'translateX(-50%)', zIndex: 22, background: 'rgba(255,105,173,.88)', color: '#fff', padding: '8px 12px', borderRadius: 999, pointerEvents: 'none', animation: 'fadeToast 1.4s ease forwards' }}>{rescueToast}</div>}
       {paused && <Panel title='Juego en pausa'><button onClick={() => setPaused(false)}>Continuar</button><button onClick={() => startLevel(levelIndex)}>Reiniciar nivel</button><button onClick={() => { setScreen('menu'); stopGame(); }}>Menú</button></Panel>}
     </>}
 
@@ -167,6 +187,7 @@ export default function CatHunt3D() {
     {screen === 'complete' && <Panel title='Misión completa ✨'><SaritaMascot /><p>Puntuación final: {score}</p><button onClick={() => startLevel(0, true)}>Jugar de nuevo</button></Panel>}
     {screen === 'gameover' && <Panel title='Game Over'><button onClick={() => startLevel(levelIndex)}>Reintentar</button><button onClick={() => setScreen('menu')}>Menú</button></Panel>}
     {achievementToast && <div style={{ position: 'fixed', top: 70, right: 12, zIndex: 40, background: 'rgba(255,255,255,.92)', padding: '10px 12px', borderRadius: 12 }}>{achievementToast}</div>}
+    <style>{`@keyframes fadeToast{0%{opacity:0;transform:translate(-50%,-8px)}12%{opacity:1;transform:translate(-50%,0)}78%{opacity:1}100%{opacity:0;transform:translate(-50%,-6px)}}`}</style>
   </div>;
 }
 
