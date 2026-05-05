@@ -1,6 +1,6 @@
-# Cat Hunt 3D
+# Sarita y los michi perdidos
 
-Juego PWA 3D creado por Bernard y Sarita.
+Juego PWA 3D kawaii creado por Bernard y Sarita.
 
 ## Desarrollo
 
@@ -22,4 +22,3 @@ npm run preview
 
 - iPhone/iPad: Safari → Compartir → Agregar a pantalla de inicio
 - Android: Chrome → Instalar app o Agregar a pantalla principal
-

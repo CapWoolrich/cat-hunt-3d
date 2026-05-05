@@ -9,9 +9,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icons/icon.svg'],
       manifest: {
-        name: 'Cat Hunt 3D',
-        short_name: 'Cat Hunt',
-        description: 'Juego 3D PWA creado por Bernard y Sarita.',
+        name: 'Sarita y los michi perdidos',
+        short_name: 'Sarita Michis',
+        description: 'Una aventura mágica para encontrar a los michi perdidos.',
         start_url: '/',
         scope: '/',
         display: 'standalone',
@@ -19,14 +19,7 @@ export default defineConfig({
         background_color: '#ffd6e7',
         theme_color: '#ff6b9d',
         categories: ['games', 'kids', 'entertainment'],
-        icons: [
-          {
-            src: '/icons/icon.svg',
-            sizes: 'any',
-            type: 'image/svg+xml',
-            purpose: 'any maskable'
-          }
-        ]
+        icons: [{ src: '/icons/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' }]
       }
     })
   ]
