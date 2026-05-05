@@ -11,7 +11,7 @@ export default defineConfig({
       manifest: {
         name: 'Sarita y los michi perdidos',
         short_name: 'Sarita Michis',
-        description: 'Una aventura mágica para encontrar a los michi perdidos.',
+        description: 'Una aventura mágica para rescatar gatitos perdidos.',
         start_url: '/',
         scope: '/',
         display: 'standalone',
